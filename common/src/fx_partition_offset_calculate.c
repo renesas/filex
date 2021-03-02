@@ -113,21 +113,13 @@ FX_MEDIA_PARTITION  partition_table[4];
 UINT                count;
 ULONG64             total_sectors;
 UCHAR               *partition_sector_ptr;
+ULONG               bytes_per_sector;
 
 
     /* Setup working pointer and initialize count.  */
     partition_sector_ptr =  partition_sector;
     count =  0;
-
-#ifdef FX_FORCE_512_BYTE_BOOT_SECTOR
-    /* Check signature to make sure the buffer is valid.  */
-    if ((partition_sector_ptr[510] != 0x55) || (partition_sector_ptr[511] != 0xAA))
-    {
-
-        /* Invalid, return an error.  */
-        return(FX_NOT_FOUND);
-    }
-#endif
+    bytes_per_sector = 512;
 
     /* Check for a real boot sector instead of a partition table.  */
     if ((partition_sector_ptr[0] == 0xe9) || ((partition_sector_ptr[0] == 0xeb) && (partition_sector_ptr[2] == 0x90)))    
@@ -137,12 +129,11 @@ UCHAR               *partition_sector_ptr;
 
 #ifndef FX_FORCE_512_BYTE_BOOT_SECTOR
         /* Get sector size in order to determine where the signature is. */
-        ULONG bytes_per_sector;
-
 #ifdef FX_ENABLE_EXFAT
         bytes_per_sector = 1 << partition_sector_ptr[0x6C];
 #else
         bytes_per_sector = _fx_utility_16_unsigned_read(&partition_sector_ptr[0x0B]);
+#endif
 #endif
 
         /* Check signature to make sure the buffer is valid.  */
@@ -152,7 +143,6 @@ UCHAR               *partition_sector_ptr;
             /* Invalid, return an error.  */
             return(FX_NOT_FOUND);
         }
-#endif
 
         /* See if there are good values for sectors per FAT.  */
         if (partition_sector_ptr[0x16] || partition_sector_ptr[0x17] || partition_sector_ptr[0x24] || partition_sector_ptr[0x25] || partition_sector_ptr[0x26] || partition_sector_ptr[0x27])
@@ -242,7 +232,6 @@ UCHAR               *partition_sector_ptr;
 #endif /* FX_ENABLE_EXFAT */
     }
     
-#ifndef FX_FORCE_512_BYTE_BOOT_SECTOR
     /* Check signature to make sure the buffer is valid.  */
     if ((partition_sector_ptr[510] != 0x55) || (partition_sector_ptr[511] != 0xAA))
     {
@@ -250,7 +239,6 @@ UCHAR               *partition_sector_ptr;
         /* Invalid, return an error.  */
         return(FX_NOT_FOUND);
     }
-#endif
     
     /* Not bootable, look for specific partition.  */
     _fx_utility_partition_get(partition_table, &count, 0, partition_sector_ptr);
